@@ -20,14 +20,6 @@ classColors = {
   5: "#cc00ff", # my car (and anything inside it, including wires, mounts, etc. No reflections)
 }
 
-color2Class = {
-  (64, 32, 32): 1, # road (all parts, anywhere nobody would look at you funny for driving)
-  (255, 0, 0): 2, # lane markings (don't include non lane markings like turn arrows and crosswalks)
-  (128, 128, 96): 3, # undrivable
-  (0, 255, 102): 4, # movable (vehicles and people/animals)
-  (204, 0, 255): 5, # my car (and anything inside it, including wires, mounts, etc. No reflections)
-}
-
 colors = [
   (64, 32, 32), # road (all parts, anywhere nobody would look at you funny for driving)
   (255, 0, 0), # lane markings (don't include non lane markings like turn arrows and crosswalks)
@@ -36,40 +28,18 @@ colors = [
   (204, 0, 255) # my car (and anything inside it, including wires, mounts, etc. No reflections)
 ]
 
-#keys_tensor = tf.data.Dataset.from_tensor_slices([(64, 32, 32), (255, 0, 0), (128, 128, 96), (0, 255, 102), (204, 0, 255)])
-#keys_tensor = tf.cast(keys_tensor, tf.int64)
-#vals_tensor = tf.data.Dataset.from_tensor_slices([1,2,3,4,5])
-
-#ds = tf.data.Dataset.zip((keys_tensor, vals_tensor))
-
-#col2ClassLookup = tf.lookup.StaticHashTable(tf.lookup.experimental.DatasetInitializer(ds))
-
-#col2ClassLookup = tf.lookup.StaticHashTable(tf.lookup.KeyValueTensorInitializer(keys_tensor, vals_tensor), -1)
-
-
 def filename_to_trainingdp(filename):
-    return {
-                "image": tf.image.decode_image(tf.io.read_file("imgs/" + filename), channels=3, expand_animations=False),
-                "segmentation_mask": tf.image.decode_image(tf.io.read_file("masks/" + filename), channels=3, expand_animations=False)
-                #"segmentation_mask": tf.keras.preprocessing.image.img_to_array(tf.keras.preprocessing.image.load_img("masks/" + filename, grayscale=False, color_mode='rgb'))
-            }
-
-def mapColor(pixel):
-  return pixel
+  return {
+    "image": tf.image.decode_image(tf.io.read_file("imgs/" + filename), channels=3, expand_animations=False),
+    "segmentation_mask": tf.image.decode_image(tf.io.read_file("masks/" + filename), channels=3, expand_animations=False)
+    #"segmentation_mask": tf.keras.preprocessing.image.img_to_array(tf.keras.preprocessing.image.load_img("masks/" + filename, grayscale=False, color_mode='rgb'))
+          }
 
 def normalize(input_image, input_mask):
   input_image = tf.cast(input_image, tf.float32) / 255.0
   input_mask = tf.cast(input_mask, tf.uint8)
   
-  input_mask = tf.map_fn(lambda row: 
-    tf.map_fn(lambda pixel:
-      # col2ClassLookup.lookup([pixel]),
-      mapColor(pixel),
-      # color2Class[(pixel[0], pixel[1], pixel[2])],
-    row),
-  input_mask)
-  #tf.print(input_mask)
-  #print()
+
   #input_mask -= 1
   return input_image, input_mask
 
@@ -88,26 +58,13 @@ def load_image_train(datapoint):
     one_hot_map = tf.cast(one_hot_map, tf.float32)
     input_mask = tf.argmax(one_hot_map, axis=-1)
 
+    
     """
-    for color in colors:
-      f1 = lambda: tf.constant(17)
-      print("HERE")
-      xmask = tf.case([(tf.equal(input_mask, color), f1)])
-      print("HERE2")
-    """
-
-    tf.print(input_mask)
-    #i = 0
-    #for color in colors:
-    #  input_mask = tf.where(input_mask == color, i, input_mask)
-    #  i += 1
-
-    tf.print(input_mask)
-
     if tf.random.uniform(()) > 0.5:
         input_image = tf.image.flip_left_right(input_image)
         input_mask = tf.image.flip_left_right(input_mask)
-
+    """
+    
     input_image, input_mask = normalize(input_image, input_mask)
 
     return input_image, input_mask
@@ -121,34 +78,17 @@ def load_image_test(datapoint):
   return input_image, input_mask
 
 
-#for img in train_generator:
-#    print(img)
-
-# images = TrainingImages()
-
 file1 = open('files_trainable', 'r') 
 filenames = list(map(lambda x: os.path.basename(x.rstrip()), file1.readlines()))
 file1.close()
 
-"""
-for filename in filenames:
-  print(filename)
-  img = np.asarray(Image.open(os.path.join("imgs", filename)))
-  mask = np.asarray(Image.open(os.path.join("masks", filename)))
-  for row in mask:
-    for pixel in row:
-      pixel = color2Class[tuple(pixel)]
-"""
-
-# print(tf.executing_eagerly())
-
 dataset = tf.data.Dataset.from_tensor_slices(list(filenames))
-
 dataset = dataset.map(filename_to_trainingdp, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-
-
-
 dataset = dataset.map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
+tf.print(dataset)
+
+exit
 
 TRAIN_LENGTH = len(filenames) # images.len()
 BATCH_SIZE = 64
@@ -164,9 +104,13 @@ def display(display_list):
   title = ['Input Image', 'True Mask', 'Predicted Mask']
 
   for i in range(len(display_list)):
+    tf.print(display_list[i].shape)
     plt.subplot(1, len(display_list), i+1)
     plt.title(title[i])
-    plt.imshow(tf.keras.preprocessing.image.array_to_img(display_list[i]))
+    if display_list[i].shape == (128,128):
+      plt.imshow(display_list[i])
+    else:
+      plt.imshow(tf.keras.preprocessing.image.array_to_img(display_list[i]))
     plt.axis('off')
   plt.show()
 
@@ -220,7 +164,7 @@ def unet_model(output_channels):
 
   return tf.keras.Model(inputs=inputs, outputs=x)
 
-OUTPUT_CHANNELS = 255
+OUTPUT_CHANNELS = len(colors)
 
 model = unet_model(OUTPUT_CHANNELS)
 model.compile(optimizer='adam',
@@ -256,7 +200,7 @@ if os.path.isfile("weights.h5"):
 
 show_predictions()
 
-EPOCHS = 3
+EPOCHS = 20
 VAL_SUBSPLITS = 5
 VALIDATION_STEPS = 2 # info.splits['test'].num_examples//BATCH_SIZE//VAL_SUBSPLITS
 

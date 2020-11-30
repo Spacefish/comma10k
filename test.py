@@ -3,9 +3,6 @@ import tensorflow as tf
 imagePayload = tf.io.read_file("masks/0000_0085e9e41513078a_2018-08-19--13-26-08_11_864.png")
 mask = tf.io.decode_png(imagePayload)
 
-tf.print(mask.shape)
-quit()
-
 colors = [
   (64, 32, 32), # road (all parts, anywhere nobody would look at you funny for driving)
   (255, 0, 0), # lane markings (don't include non lane markings like turn arrows and crosswalks)
