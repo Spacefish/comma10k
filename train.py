@@ -118,7 +118,8 @@ for image, mask in dataset.take(1):
   sample_image, sample_mask = image, mask
 #display([sample_image, sample_mask])
 
-base_model = tf.keras.applications.MobileNetV2(input_shape=[128, 128, 3], include_top=False)
+# base_model = tf.keras.applications.MobileNetV2(input_shape=[128, 128, 3], include_top=False)
+base_model = tf.keras.applications.MobileNetV2(input_shape=[512, 512, 3], include_top=True, alpha=2.0)
 
 # Use the activations of these layers
 layer_names = [
