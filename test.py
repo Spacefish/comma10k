@@ -11,8 +11,10 @@ import matplotlib
 matplotlib.use('GTK3Agg')
 from PIL import Image
 
-# cap = cv2.VideoCapture('test/VID_20150824_200224.mp4')
-cap = cv2.VideoCapture('test/dashcam.mp4')
+cap = cv2.VideoCapture('test/VID_20150824_200224.mp4')
+# cap = cv2.VideoCapture('test/dashcam.mp4')
+
+size = 128*3
 
 colors = [
   (64, 32, 32), # road (all parts, anywhere nobody would look at you funny for driving)
@@ -22,7 +24,7 @@ colors = [
   (204, 0, 255) # my car (and anything inside it, including wires, mounts, etc. No reflections)
 ]
 
-base_model = tf.keras.applications.MobileNetV2(input_shape=[128, 128, 3], include_top=False)
+base_model = tf.keras.applications.MobileNetV2(input_shape=[size, size, 3], include_top=False, alpha=1.4)
 
 # Use the activations of these layers
 layer_names = [
@@ -47,7 +49,7 @@ up_stack = [
 ]
 
 def unet_model(output_channels):
-  inputs = tf.keras.layers.Input(shape=[128, 128, 3])
+  inputs = tf.keras.layers.Input(shape=[size, size, 3])
   x = inputs
 
   # Downsampling through the model
@@ -110,7 +112,7 @@ while(cap.isOpened()):
 
     imagePayload = tf.keras.preprocessing.image.img_to_array(frame)
     
-    image = tf.image.resize(imagePayload, (128,128))
+    image = tf.image.resize(imagePayload, (size,size))
     image = image / 255.0
     #tf.print(image)
 
@@ -130,9 +132,9 @@ while(cap.isOpened()):
     realImg = Image.fromarray(np.uint8(realImg))
     maskImg = Image.fromarray(np.uint8(maskImg))
 
-    outImg = Image.new('RGBA', (256,128), (255,0,0,255))
+    outImg = Image.new('RGBA', (size*2,size), (255,0,0,255))
     outImg.paste(realImg, (0,0))
-    outImg.paste(maskImg, (128,0))
+    outImg.paste(maskImg, (size,0))
 
     outImg.save('./out/' + str(c).zfill(5) + ".png", "PNG")
 

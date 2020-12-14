@@ -12,6 +12,8 @@ from tensorflow_examples.models.pix2pix import pix2pix
 import matplotlib
 matplotlib.use('qt5agg')
 
+size = 128*3
+
 classColors = {
   1: "#402020", # road (all parts, anywhere nobody would look at you funny for driving)
   2: "#ff0000", # lane markings (don't include non lane markings like turn arrows and crosswalks)
@@ -46,8 +48,8 @@ def normalize(input_image, input_mask):
 @tf.function
 def load_image_train(datapoint):
     # print(datapoint)
-    input_image = tf.image.resize(datapoint['image'], (128, 128))
-    input_mask = tf.image.resize(datapoint['segmentation_mask'], (128, 128))
+    input_image = tf.image.resize(datapoint['image'], (size, size))
+    input_mask = tf.image.resize(datapoint['segmentation_mask'], (size, size))
   
     one_hot_map = []
     for color in colors:
@@ -70,8 +72,8 @@ def load_image_train(datapoint):
     return input_image, input_mask
 
 def load_image_test(datapoint):
-  input_image = tf.image.resize(datapoint['image'], (128, 128))
-  input_mask = tf.image.resize(datapoint['segmentation_mask'], (128, 128))
+  input_image = tf.image.resize(datapoint['image'], (size, size))
+  input_mask = tf.image.resize(datapoint['segmentation_mask'], (size, size))
 
   input_image, input_mask = normalize(input_image, input_mask)
 
@@ -107,7 +109,7 @@ def display(display_list):
     tf.print(display_list[i].shape)
     plt.subplot(1, len(display_list), i+1)
     plt.title(title[i])
-    if display_list[i].shape == (128,128):
+    if display_list[i].shape == (size,size):
       plt.imshow(display_list[i])
     else:
       plt.imshow(tf.keras.preprocessing.image.array_to_img(display_list[i]))
@@ -119,7 +121,7 @@ for image, mask in dataset.take(1):
 #display([sample_image, sample_mask])
 
 # base_model = tf.keras.applications.MobileNetV2(input_shape=[128, 128, 3], include_top=False)
-base_model = tf.keras.applications.MobileNetV2(input_shape=[512, 512, 3], include_top=True, alpha=2.0)
+base_model = tf.keras.applications.MobileNetV2(input_shape=[size, size, 3], include_top=False, alpha=1.4)
 
 # Use the activations of these layers
 layer_names = [
@@ -144,7 +146,7 @@ up_stack = [
 ]
 
 def unet_model(output_channels):
-  inputs = tf.keras.layers.Input(shape=[128, 128, 3])
+  inputs = tf.keras.layers.Input(shape=[size, size, 3])
   x = inputs
 
   # Downsampling through the model
@@ -194,6 +196,7 @@ class DisplayCallback(tf.keras.callbacks.Callback):
   def on_epoch_end(self, epoch, logs=None):
     clear_output(wait=True)
     # show_predictions()
+    model.save_weights('weights.h5')
     print ('\nSample Prediction after epoch {}\n'.format(epoch+1))
 
 if os.path.isfile("weights.h5"):
